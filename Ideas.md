@@ -677,3 +677,110 @@ Al momento de la consulta (23 de julio de 2026), las sub-páginas específicas d
 - La estructura de archivos y código fuente documentada en el Core Setup
 
 Para obtener los detalles específicos de configuración de cada módulo (especialmente los mapeos de entidades y lógicas de controlador), se recomienda intentar acceder directamente a las URLs listadas en la sección 12 cuando el servidor esté disponible, o consultar el repositorio de código fuente del proyecto si está publicado.
+
+
+=====
+
+# Idea 4
+
+Ideas nuevas adicionales que NO están en ninguno de los proyectos originales ni en las Ideas 1-3. Organizadas por categoría.
+
+---
+
+## 🧠 Inteligencia y Contexto
+
+| # | Idea | Descripción |
+|---|---|---|
+| 1 | **Modo adaptativo por hora** | El mando cambia automáticamente qué botones hacen qué según la hora. Ej: de 6-9am los botones controlan luces del baño y café; de 20-23h controlan TV y luces del salón. Sin tocar configuración. |
+| 2 | **Historial de comandos** | Guardar últimos 20 comandos enviados y ofrecer "repetir último" con doble-tap en OK. Útil cuando mandas algo y no llegó. |
+| 3 | **Auto-descubrimiento de dispositivos HA** | Al arrancar, consulta la API REST de HA y ofrece configurar nuevos dispositivos detectados sin recompilar. Portal web embebido mínimo. |
+| 4 | **Perfiles de usuario** | 2-3 perfiles (papá/mamá/niño) con diferentes escenas y dispositivos visibles. Cambiar perfil con long-press en Home. |
+| 5 | **Macro recorder** | Graba secuencia de botones que presionaste → la guarda como "macro" → la próxima vez la reproduce con un solo botón. |
+
+---
+
+## ⚡ Energía Avanzada
+
+| # | Idea | Descripción |
+|---|---|---|
+| 6 | **Carga solar** | Un pequeño panel solar en la parte trasera de la carcasa (o en el dock) con BQ25504 energy harvester. Para mantener carga en standby sin enchufar nunca. |
+| 7 | **Supercondensador backup** | En lugar de solo LiPo, un supercap de 1F para los wakeups rápidos. La LiPo solo se usa cuando hay transmisión WiFi activa. |
+| 8 | **Sleep selectivo por radio** | En vez de deep sleep total, apagar solo WiFi y mantener BLE activo (consume ~10µA). Si el TV está encendido, solo necesitas BLE. Si necesitas HA, enciende WiFi. |
+| 9 | **OTA nocturna** | El mando se despierta a las 3am (timer), se conecta a WiFi, verifica si hay OTA pendiente, se actualiza si la hay, y vuelve a dormir. Todo automático. |
+| 10 | **Modo avión** | Un modo que desactiva todas las radios y solo funciona IR. Para aviones o lugares sin WiFi. La pantalla muestra solo los controles IR. |
+
+---
+
+## 📡 Comunicación Avanzada
+
+| # | Idea | Descripción |
+|---|---|---|
+| 11 | **RF 433/868 MHz con CC1101** | Para persianas Somfy, enchufes Sonoff RF, alarmas. El CC1101 cuesta $2 y cubre lo que IR no puede. |
+| 12 | **Zigbee direct (ESP32-C6)** | Si migras a ESP32-C6, puedes controlar dispositivos Zigbee directamente sin coordinador. Bombillas IKEA, sensores, etc. |
+| 13 | **LoRa ultra-largo alcance** | Para controlar dispositivos en el garaje, jardín, o caseta. Un SX1276 con 5km de alcance a ultra-bajo consumo. |
+| 14 | **IR bidireccional con retroalimentación** | Cuando mandas IR al AC, el mando escucha la respuesta IR del AC y confirma que recibió el comando. Si no, reintenta. |
+| 15 | **Proxy de comandos** | Si el mando no tiene línea directa IR al dispositivo, envía el comando vía MQTT a otro ESP32 con IR posicionado mejor (relay IR por WiFi). |
+
+---
+
+## 🖥️ Display y UX
+
+| # | Idea | Descripción |
+|---|---|---|
+| 16 | **Mini-notificaciones push** | HA manda notificaciones al mando (timbre sonó, lavadora terminó, puerta abierta). Se muestra como toast en la pantalla. |
+| 17 | **Modo "picture frame"** | Cuando lleva 5 minutos sin usarse pero está en el dock, muestra fotos de un álbum de HA o reloj artístico. Pantalla siempre activa solo en dock. |
+| 18 | **Códigos QR en pantalla** | Para compartir WiFi guest, o un link a una cámara de seguridad. Lo generas en HA y se muestra en la pantalla del mando para que alguien lo escanee. |
+| 19 | **Guía interactiva de botones** | Long-press en "?" muestra en pantalla qué hace cada botón en el modo actual. Útil cuando tienes visitas. |
+| 20 | **Skin/layout por dispositivo** | Cuando controlas el TV, la pantalla muestra layout de TV (flechas grandes, OK central). Cuando controlas AC, muestra termostato circular. UI se adapta. |
+
+---
+
+## 🔧 Hardware Creativo
+
+| # | Idea | Descripción |
+|---|---|---|
+| 21 | **Sensor de temperatura ambiente** | Un BME280 en el mando mide temperatura/humedad del salón y la reporta a HA. El mando se convierte en sensor + control. |
+| 22 | **Micrófono de campo lejano** | PDM mic (INMP441) para wake-word local. "Hey mando, apaga las luces". Sin cloud. ESP-SR procesa localmente. |
+| 23 | **Altavoz piezoeléctrico** | Para confirmación sonora (beep), alarmas, o incluso un "bip" cuando alguien toca el timbre. No necesita amplificador. |
+| 24 | **Sensor TOF en la parte superior** | Un VL53L0X mirando hacia arriba. Si levantas la mano sobre el mando sin tocarlo = wake up + acción rápida. |
+| 25 | **Conector magnético de carga** | Pogo-pins con imanes (estilo Apple Watch) para un dock de carga con contacto automático. |
+| 26 | **Encoder rotativo lateral** | Un encoder en el lateral del mando para volumen con una mano, sin mirar la pantalla. Tactile y rápido. |
+
+---
+
+## 🏠 HA Integration Pro
+
+| # | Idea | Descripción |
+|---|---|---|
+| 27 | **Estado visual de puertas/ventanas** | La pantalla muestra un mini plano del piso con puntos verdes/rojos = puertas abiertas/cerradas. Vista rápida de seguridad. |
+| 28 | **Control de cámaras** | Thumbnail de la cámara (JPEG snapshot cada 10s) visible en la pantalla del Panel de Mesa. Tap = fullscreen. |
+| 29 | **Historial de consumo eléctrico** | Gráfica simple (últimas 24h) del consumo de la casa, visible en modo idle del panel. |
+| 30 | **Trigger por presencia** | Si el mando detecta que lo estás sosteniendo (IMU) + estás en el salón (sensor de presencia HA) → activa escena automáticamente. |
+
+---
+
+## 🔐 Seguridad y Robustez
+
+| # | Idea | Descripción |
+|---|---|---|
+| 31 | **Bloqueo por inactividad** | Después de 10 min sin uso, el mando pide un "patrón" (secuencia de 3 botones) para desbloquearse. Evita que niños o visitas cambien cosas. |
+| 32 | **Modo invitado** | Perfil restringido que solo permite controlar TV y luces, pero no persianas, alarma ni termostato. Se activa con una combinación de botones. |
+| 33 | **Log de acciones en HA** | Cada comando que sale del mando se registra como evento en HA. Puedes ver quién hizo qué y cuándo desde el historial. |
+| 34 | **Cifrado ESP-NOW** | Los mensajes ESP-NOW entre Control A y Control B van cifrados con clave precompartida. Ningún vecino puede inyectar comandos. |
+| 35 | **Detección de caída** | Si el IMU detecta caída libre + impacto fuerte, el mando entra en modo protección (apaga pantalla) y manda alerta a HA. |
+
+---
+
+## 🎨 Personalización y Social
+
+| # | Idea | Descripción |
+|---|---|---|
+| 36 | **Temas descargables** | Una galería web donde la comunidad comparte temas de color/iconos. Descargas un JSON y el mando cambia de look. |
+| 37 | **Configurador web progresivo** | Portal web en el ESP32 (captive portal avanzado) donde configuras TODO: WiFi, dispositivos, mapeo de botones, temas. Sin recompilar. |
+| 38 | **Exportar/importar config** | Backup de toda la configuración como archivo JSON descargable. Si rompes algo, restauras. Si tienes 2 mandos, clonas la config. |
+| 39 | **Animaciones por evento** | Al activar "Modo Cine", la pantalla hace una animación tipo "cortinas cerrándose". Al apagar todo, un fade out suave. Detalles que hacen la diferencia. |
+| 40 | **Sonidos personalizables** | Diferentes tonos de confirmación para diferentes acciones. Puedes poner tu propio "clic" o "swoosh" (almacenados en la SD/SPIFFS). |
+
+---
+
+¿Alguna de estas te interesa para implementar primero? Se pueden desarrollar con código, esquemáticos, o BOM según la que elijas.
