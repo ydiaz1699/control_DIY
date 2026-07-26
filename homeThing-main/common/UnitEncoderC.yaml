@@ -1,0 +1,34 @@
+i2c:
+  id: bus_a
+  sda: 21
+  scl: 22
+  scan: True
+
+UnitEncoderC:
+  id: encoder_base
+  i2c_id: bus_a
+  button:
+    name: "${friendly_name} Rotary Button"
+    id: rotary_button
+    internal: True
+    on_click:
+      min_length: 5ms
+      max_length: 350ms
+      then:
+        homething_menu.select: homeThingMenu
+    on_multi_click:
+    - timing:
+        - ON for at least 0.5s
+      then:
+        homething_menu.option: homeThingMenu
+  encoder:
+    name: "${friendly_name} Rotary Encoder"
+    id: rotary
+    internal: True
+    encoder_filter: 2
+    on_clockwise:
+      then:
+        homething_menu.scroll_clockwise: homeThingMenu
+    on_anticlockwise:
+      then:
+        homething_menu.scroll_counter_clockwise: homeThingMenu

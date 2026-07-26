@@ -1,0 +1,25 @@
+substitutions:
+  rotary_pin_a: "21"
+  rotary_pin_b: "22"
+  
+sensor:
+  - platform: rotary_encoder
+    filters:
+    - throttle: 0.01s
+    name: "Rotary Encoder"
+    internal: true
+    pin_a:
+      number: $rotary_pin_a
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: $rotary_pin_b
+      mode:
+        input: true
+        pullup: true
+    id: rotary
+    on_clockwise:
+        homething_menu.scroll_clockwise: homeThingMenu
+    on_anticlockwise:
+        homething_menu.scroll_counter_clockwise: homeThingMenu

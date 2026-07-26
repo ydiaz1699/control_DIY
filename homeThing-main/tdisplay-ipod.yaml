@@ -1,0 +1,244 @@
+esphome:
+  name: "homething-ipod"
+  on_boot: # sleep if theres no wifi after 45s
+    priority: 600.0
+    then:
+      - delay: 45s
+      - if:
+          condition:
+            not:
+              - wifi.connected:
+          then:
+            - switch.turn_on: sleep_toggle
+
+esp32:
+  board: featheresp32
+
+external_components:
+  - source: github://landonr/homeThing@main #update_to_head_ref
+      # type: local
+      # path: components
+    refresh: 0s
+    components: [homeThingDisplayState, homeThing, homeThingApp, homeThingAppNowPlaying, homeThingAppWeather]
+  - source:
+      type: git
+      url: https://github.com/landonr/esphome-components
+      ref: main
+    refresh: 0s
+    components: [
+      homeassistant_component,
+      homeassistant_media_player,
+      media_player_source,
+      media_player_source_sonos,
+      media_player_source_spotify,
+      media_player_source_custom
+    ]
+
+packages: # maybe modify: include default ipod controls
+  # common
+  images_weather: !include common/images-weather.yaml
+  device_base: github://landonr/homeThing/common/device_base_light.yaml@main
+  
+  # needs to be updated to above format
+  remote_package:
+    url: https://github.com/landonr/homeThing
+    ref: main
+    files: [
+      common/ipod/lilygo_tdisplay_ipod_backlight.yaml, # used for toggling backlight
+      common/ipod/lilygo_tdisplay_ipod_battery.yaml, # used for battery percent
+      common/ipod/lilygo_tdisplay_ipod_binary_sensor.yaml, # used for button controls
+      common/ipod/lilygo_tdisplay_ipod_rotary.yaml, # used for rotary controls
+      common/ipod/lilygo_tdisplay_ipod_sleep.yaml, # required for device to sleep
+      common/fonts.yaml, # default font
+      common/icon_fonts.yaml, # material icons
+      common/settings.yaml, # settings screen
+      # common/images-weather.yaml, # weather images
+    ]
+    refresh: 0s
+
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO19
+
+substitutions: # set friendly name
+  friendly_name: "homething-ipod"
+
+color: # setup primary accent color
+  - id: my_primary_accent
+    red_int: 75
+    green_int: 45
+    blue_int: 209
+
+light: # home assistant lights
+  - platform: homeassistant_component
+    id: light_desk_lamp
+    entity_id: light.desk_lamp
+    name: Desk Lamp
+  - platform: homeassistant_component
+    id: light_all_lights
+    entity_id: light.all_lights
+    name: All Lights
+
+media_player_source_sonos: # sonos favorite source
+  id: sonos
+
+media_player: # home assistant media players
+  - platform: homeassistant_media_player
+    name: Beam
+    entity_id: "media_player.beam"
+    id: media_player_beam
+    type: speaker
+    sources:
+      - id: sonos
+        type: sonos
+  - platform: homeassistant_media_player
+    name: TV
+    entity_id: "media_player.55_tcl_roku_tv"
+    id: media_player_tv
+    type: roku
+    soundbar:
+      speaker: media_player_beam
+
+homeassistant_media_player: # media player menu
+  id: media_group_component
+  media_players:
+    - id: media_player_beam
+      type: speaker
+    - id: media_player_tv
+      type: roku
+
+number: # home assistant number
+  - platform: homeassistant_component
+    entity_id: number.desk_height_cm
+    name: desk height
+    id: desk_height_number
+    min_value: 61.0
+    max_value: 105.0
+    step: 1
+
+cover: # home assistant cover
+  - platform: homeassistant_component
+    entity_id: "cover.megadesk_cover"
+    name: "Megadesk"
+    id: cover_megadesk
+
+homeThingAppNowPlaying:
+  id: now_playing
+  media_player_group: media_group_component
+  display: my_display
+  display_state: display_state_id
+
+homeThingDisplayState:
+  id: display_state_id
+  draw_battery_level: true
+  font_small: small_font
+  font_medium: medium_font
+  font_large: large_font
+  font_large_heavy: large_font
+  font_material_large: material_font_large
+  font_material_small: material_font_small
+
+homeThingAppWeather:
+  id: weather
+  display: my_display
+  display_state: display_state_id
+  temperature_sensor: weather_temperature
+  humidity_sensor: weather_humidity
+  condition_sensor: weather_state
+  images:
+    cloudy: weather_cloudy
+    fog: weather_fog
+    rainy: weather_rainy
+    snow: weather_snow
+    sunny: weather_sunny
+    clear: weather_clear
+    hail: weather_hail
+    windy: weather_windy
+    partly_cloudy: weather_partly_cloudy
+    lightning: weather_lightning
+
+homeThing:
+  id: homeThingMenu
+  settings:
+    sleep_after: 14400
+  boot:
+    api_connected: api_connected
+    launch_image: launch_image    
+  sleep_switch: sleep_toggle
+  backlight: backlight
+  battery:
+    battery_percent: battery_percent
+    charging: charging
+  display: my_display
+  display_state: display_state_id
+  apps:
+    - now_playing
+  on_redraw:
+    then:
+      component.update: my_display
+  screens:
+    - name: Desk Screen
+      entities:
+        - type: cover
+          id: cover_megadesk
+        - type: number
+          id: desk_height_number
+        - type: command
+          name: "desk nudge up"
+          command:
+            - homeassistant.service:
+                service: button.press
+                data:
+                  entity_id: "button.desk_position_nudge_up"
+        - type: command
+          name: "desk nudge down"
+          command:
+            - homeassistant.service:
+                service: button.press
+                data:
+                  entity_id: "button.desk_position_nudge_down"
+        - id: light_desk_lamp
+          type: light
+    - name: Lights Screen
+      entities:
+        - id: light_all_lights
+          type: light
+        - type: command
+          name: "color lights"
+          command:
+            - homeassistant.service:
+                service: script.colors
+        - type: command
+          name: "lights off"
+          command:
+            - homeassistant.service:
+                service: script.off_script
+    - name: Settings Screen
+      show_version: True
+      entities:
+        - id: backlight
+          type: light
+        - id: "restart_switch"
+          type: switch
+        - id: wifi_ssid
+          type: text_sensor
+        - id: wifi_signal_percent
+          type: sensor
+        - id: wifi_ip
+          type: text_sensor
+        - id: reset_switch
+          type: switch
+
+display:
+  - platform: st7789v
+    model: TTGO_TDisplay_135x240
+    id: my_display
+    cs_pin: GPIO5
+    dc_pin: GPIO16
+    reset_pin: GPIO23
+    backlight_pin: no
+    rotation: 90
+    update_interval: 10s
+    lambda: |-
+      id(homeThingMenu)->draw_menu_screen();
+      return;

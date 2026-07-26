@@ -1,0 +1,35 @@
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO37
+      inverted: true
+    name: Button A
+    on_click:
+      min_length: 5ms
+      max_length: 350ms
+      then:
+        homething_menu.select: homeThingMenu
+    on_multi_click:
+    - timing:
+        - ON for at least 0.5s
+      then:
+        homething_menu.option: homeThingMenu
+    - timing:
+        - ON for at least 3s
+      then:
+      - lambda: |-
+          id(restart_switch)->toggle();
+    on_release:
+      then:
+        - light.turn_off: led1
+  - platform: gpio
+    pin:
+      number: GPIO39
+      inverted: true
+    name: Button B
+    on_press:
+      then:
+        homething_menu.home: homeThingMenu
+    on_release:
+      then:
+        - light.turn_off: led1

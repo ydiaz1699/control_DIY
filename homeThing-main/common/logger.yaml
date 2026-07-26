@@ -1,0 +1,33 @@
+logger:
+  logs:
+    esp32.preferences: INFO
+    component: ERROR
+    sensor: INFO
+    switch: INFO
+    main: INFO
+    binary_sensor: WARN
+    text_sensor: WARN
+    homething.menu.display: WARN
+    homething.menu.base: WARN
+    homething.boot: INFO
+    homething.menu.control: INFO
+    homething.menu.screen: WARN
+    homething.animation: INFO
+    homething.menu.text_helpers: INFO
+    homething.nowplaying.control: WARN
+    homeassistant.media_player_group: WARN
+    homeassistant.component: WARN
+    homeassistant.light: WARN
+    homeassistant.switch: WARN
+    homeassistant.text_sensor: WARN
+    homeassistant.media_player_base: WARN
+    homeassistant.media_player_tv: WARN
+    homeassistant.fan: INFO
+    media.player.source.spotify: WARN
+    media.player.source.sonos: WARN
+    cover: WARN
+    light: WARN
+    api: INFO
+    voice_assistant: INFO
+    climate: INFO
+  level: DEBUG

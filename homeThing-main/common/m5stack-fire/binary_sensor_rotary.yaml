@@ -1,0 +1,25 @@
+binary_sensor:
+  - platform: gpio
+    id: M5_BtnA
+    pin:
+      number: 39
+      inverted: true
+    on_click:
+      then:
+        homething_menu.back: homeThingMenu
+  - platform: gpio
+    id: M5_BtnB
+    pin:
+      number: 38
+      inverted: true
+    on_click:
+      then:
+        homething_menu.select: homeThingMenu
+  - platform: gpio
+    id: M5_BtnC
+    pin:
+      number: 37
+      inverted: true
+    on_click:
+      then:
+        homething_menu.option: homeThingMenu

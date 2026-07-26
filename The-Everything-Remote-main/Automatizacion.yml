@@ -1,0 +1,219 @@
+alias: Remote - Navigation
+description: Maps ESPHome button events to TV Smart key commands
+triggers:
+  - event_type: esphome.remote_button_pressed
+    trigger: event
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'up' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_UP
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'down' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_DOWN
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'left' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_LEFT
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'right' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_RIGHT
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'select_button' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_ENTER
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'back' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_RETURN
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'home' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_HOME
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'settings' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_MENU
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'volume_up' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_VOLUP
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'volume_down' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_VOLDOWN
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'mute' and trigger.event.data.type
+              == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_MUTE
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'channel_up' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_CHUP
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'channel_down' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_CHDOWN
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'power' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            data:
+              media_content_type: send_key
+              media_content_id: KEY_POWER
+            action: media_player.play_media
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'power' and
+              trigger.event.data.type == 'long' }}
+        sequence:
+          - target:
+              entity_id: "{{ tv_entity }}"
+            action: media_player.turn_off
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.button == 'play_pause' and
+              trigger.event.data.type == 'single' }}
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ play_pause_toggle == 'pause' }}"
+                sequence:
+                  - target:
+                      entity_id: "{{ tv_entity }}"
+                    data:
+                      media_content_type: send_key
+                      media_content_id: KEY_PAUSE
+                    action: media_player.play_media
+            default:
+              - target:
+                  entity_id: "{{ tv_entity }}"
+                data:
+                  media_content_type: send_key
+                  media_content_id: KEY_PLAY
+                action: media_player.play_media
+variables:
+  tv_entity: media_player.living_room_tv
+  play_pause_toggle: >
+    {% set last = state_attr('automation.remote_navigation', 'last_triggered')
+    %} {% if last and (now() - last).total_seconds() < 3 %}
+      pause
+    {% else %}
+      play
+    {% endif %}
+mode: queued

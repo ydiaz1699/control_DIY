@@ -1,0 +1,42 @@
+i2c:
+  - id: bus_b
+    sda: GPIO0
+    scl: GPIO26
+    scan: true
+
+MiniEncoderC:
+  id: encoder_base
+  i2c_id: bus_b
+  button:
+    name: "${friendly_name} Rotary Button"
+    id: rotary_button
+    internal: True
+    on_press:
+      # min_length: 0ms
+      # max_length: 350ms
+      then:
+        homething_menu.select: homeThingMenu
+    # on_multi_click:
+    # - timing:
+    #     - ON for at least 0.5s
+      # then:
+        # homething_menu.option: homeThingMenu
+  encoder:
+    name: "${friendly_name} Rotary Encoder"
+    id: rotary
+    internal: True
+    encoder_filter: 3
+    on_clockwise:
+      then:
+        homething_menu.scroll_clockwise: homeThingMenu
+    on_anticlockwise:
+      then:
+        homething_menu.scroll_counter_clockwise: homeThingMenu
+
+# internal LED
+light:
+  - platform: MiniEncoderC
+    name: "${friendly_name} Encoder Light"
+    id: encoder_light
+    i2c_id: bus_b
+    internal: False

@@ -1,0 +1,59 @@
+esphome:
+  name: "homething-basic"
+
+api:
+
+esp32:
+  board: featheresp32
+
+external_components:
+  - source: github://landonr/homeThing@main #update_to_head_ref
+      # type: local
+      # path: components
+    refresh: 0s
+    components: [homeThingDisplayState, homeThing]
+
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO19
+
+substitutions: # set friendly name
+  friendly_name: "homething-basic"
+
+packages:
+  # common
+  device_base: github://landonr/homeThing/common/device_base_light.yaml@main
+
+  # fonts
+  fonts_roboto: github://landonr/homeThing/common/fonts-roboto.yaml@main
+  icon_fonts: github://landonr/homeThing/common/icon_fonts.yaml@main
+
+homeThingDisplayState:
+  id: display_state_id
+  font_small: small_font
+  font_medium: medium_font
+  font_large: large_font
+  font_large_heavy: large_heavy_font
+  font_material_large: material_font_large
+  font_material_small: material_font_small
+
+homeThing:
+  id: homeThingMenu
+  display: my_display
+  display_state: display_state_id
+  on_redraw:
+    then:
+      component.update: my_display
+
+display:
+  - platform: st7789v
+    model: TTGO_TDisplay_135x240
+    id: my_display
+    cs_pin: GPIO5
+    dc_pin: GPIO16
+    reset_pin: GPIO23
+    rotation: 90
+    update_interval: 10s
+    lambda: |-
+      id(homeThingMenu)->draw_menu_screen();
+      return;
