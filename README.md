@@ -7,7 +7,10 @@ tambien agregue archivos que no estan en el githuab pero si en su pagina
 ---
 
 OMOTE-Firmware-main:[https://github.com/OMOTE-Community/OMOTE-Firmware.git]
+Woki:[https://github.com/OMOTE-Community/OMOTE-Firmware/wiki]
 
+OMOTE-Hardware-main:[https://github.com/OMOTE-Community/OMOTE-Hardware.git]
+wiki:[https://github.com/OMOTE-Community/OMOTE-Hardware/wiki]
 ---
 
 homeThing-main:[https://github.com/landonr/homeThing.git]
