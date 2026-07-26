@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════
+# Gesture Engine — Advanced touch interactions
+# ═══════════════════════════════════════════════════════════
+# 
+# INNOVATION: Multi-touch gesture recognition
+# - Swipe from edge: reveal widget panel
+# - Swipe left/right: navigate dashboard pages
+# - Long press: show context menu / scene picker
+# - Two-finger swipe down: dim display
+# - Double-tap: toggle widget overlay
+
+globals:
+  - id: gesture_start_x
+    type: int16_t
+    initial_value: '0'
+  - id: gesture_start_y
+    type: int16_t
+    initial_value: '0'
+  - id: gesture_start_time
+    type: unsigned long
+    initial_value: '0'
+  - id: gesture_active
+    type: bool
+    initial_value: 'false'
+  - id: last_tap_time
+    type: unsigned long
+    initial_value: '0'
+
+# Gesture detection is handled by the panel_widgets component.
+# This package provides the ESPHome-level integration points.
+
+# Double-tap detection via interval check
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          // Double-tap detection logic
+          // If two taps happen within 300ms, toggle widget overlay
+          unsigned long now_ms = millis();
+          static unsigned long prev_tap = 0;
+          static int tap_count = 0;
+          
+          // This is a placeholder — real implementation hooks into
+          // the GT911 touchscreen interrupt via the panel_widgets component

@@ -1,0 +1,456 @@
+# ═══════════════════════════════════════════════════════════════
+# Control B — "Panel de Mesa" — ESPHome Configuration
+# 
+# Hardware: Guition ESP32-S3-4848S040 (480x480 RGB666 IPS Touch)
+# Features: RemoteWebView streaming + Local widgets + ESP-NOW sync
+# ═══════════════════════════════════════════════════════════════
+
+substitutions:
+  device_name: "panel-de-mesa"
+  friendly_name: "Panel de Mesa"
+  # RemoteWebView Server address (change to your server IP)
+  rwv_server: "192.168.1.100:8081"
+  # Home Assistant dashboard URL to display
+  dashboard_url: "http://homeassistant.local:8123/dashboard-panel/0"
+  # Backlight auto-dim timeout (seconds)
+  idle_timeout: "60"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    priority: 200
+    then:
+      - light.turn_on:
+          id: backlight
+          brightness: 80%
+      - lambda: |-
+          ESP_LOGI("panel", "═══════════════════════════════════════");
+          ESP_LOGI("panel", " Control B — Panel de Mesa v1.0");
+          ESP_LOGI("panel", " Dashboard + Widgets + ESP-NOW Sync");
+          ESP_LOGI("panel", "═══════════════════════════════════════");
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+    components:
+      - name: "espressif/esp_websocket_client"
+        ref: 1.5.0
+      - name: "bitbank2/jpegdec"
+        source: https://github.com/strange-v/jpegdec-esphome
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ═══════════════════════════════════════════════════════════════
+# External Components
+# ═══════════════════════════════════════════════════════════════
+
+external_components:
+  # RemoteWebView client component (JPEG tile streaming)
+  - source: github://strange-v/RemoteWebViewClient@main
+    refresh: 0s
+    components: [remote_webview]
+  # Local custom widget overlay component
+  - source:
+      type: local
+      path: components/panel_widgets
+    components: [panel_widgets]
+
+# ═══════════════════════════════════════════════════════════════
+# Logging & Communication
+# ═══════════════════════════════════════════════════════════════
+
+logger:
+  hardware_uart: UART0
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_key
+  services:
+    # Service to change displayed URL from HA
+    - service: navigate_to_url
+      variables:
+        url: string
+      then:
+        - lambda: |-
+            if (!id(rwv).open_url(std::string(url.c_str()))) {
+              ESP_LOGW("panel", "Failed to navigate to URL: %s", url.c_str());
+            }
+    # Service to show/hide widget overlay
+    - service: toggle_widgets
+      then:
+        - lambda: |-
+            id(panel_widget_overlay).toggle_visibility();
+    # Service to activate scene (from Control A sync)
+    - service: activate_scene
+      variables:
+        scene_name: string
+      then:
+        - homeassistant.service:
+            service: scene.turn_on
+            data:
+              entity_id: !lambda 'return "scene." + scene_name;'
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  power_save_mode: NONE  # Panel is always plugged in, no power saving
+
+captive_portal:
+
+# ═══════════════════════════════════════════════════════════════
+# Display — ST7701S 480x480 RGB666
+# ═══════════════════════════════════════════════════════════════
+
+spi:
+  clk_pin: GPIO48
+  mosi_pin: GPIO47
+
+i2c:
+  - id: bus_internal
+    sda: GPIO19
+    scl: GPIO45
+    frequency: 400kHz
+
+display:
+  - platform: st7701s
+    id: main_display
+    show_test_card: false
+    update_interval: never
+    auto_clear_enabled: false
+    spi_mode: MODE3
+    data_rate: 2MHz
+    color_order: RGB
+    invert_colors: false
+    dimensions:
+      width: 480
+      height: 480
+    cs_pin: 39
+    de_pin: 18
+    hsync_pin: 16
+    vsync_pin: 17
+    pclk_pin: 21
+    pclk_frequency: 12MHz
+    pclk_inverted: false
+    hsync_pulse_width: 8
+    hsync_front_porch: 10
+    hsync_back_porch: 20
+    vsync_pulse_width: 8
+    vsync_front_porch: 10
+    vsync_back_porch: 10
+    init_sequence:
+      - 1
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xCD, 0x00]
+    data_pins:
+      red:
+        - GPIO11
+        - GPIO12
+        - GPIO13
+        - GPIO14
+        - GPIO0
+      green:
+        - GPIO8
+        - GPIO20
+        - GPIO3
+        - GPIO46
+        - GPIO9
+        - GPIO10
+      blue:
+        - GPIO4
+        - GPIO5
+        - GPIO6
+        - GPIO7
+        - GPIO15
+
+# ═══════════════════════════════════════════════════════════════
+# Touchscreen — GT911 Capacitive (Multi-touch)
+# ═══════════════════════════════════════════════════════════════
+
+touchscreen:
+  platform: gt911
+  id: touch_panel
+  i2c_id: bus_internal
+  transform:
+    mirror_x: false
+    mirror_y: false
+  on_touch:
+    then:
+      - lambda: |-
+          // Reset idle timer on any touch
+          id(last_touch_time) = millis();
+          // Ensure backlight is at full brightness
+          if (id(is_dimmed)) {
+            auto call = id(backlight).turn_on();
+            call.set_brightness(0.8);
+            call.perform();
+            id(is_dimmed) = false;
+          }
+
+# ═══════════════════════════════════════════════════════════════
+# Backlight — PWM controlled
+# ═══════════════════════════════════════════════════════════════
+
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: backlight_pwm
+    frequency: 1000Hz
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Panel Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 500ms
+
+# ═══════════════════════════════════════════════════════════════
+# RemoteWebView Component (JPEG tile streaming from server)
+# ═══════════════════════════════════════════════════════════════
+
+remote_webview:
+  id: rwv
+  server: ${rwv_server}
+  url: ${dashboard_url}
+  full_frame_tile_count: 1
+  max_bytes_per_msg: 61440
+  jpeg_quality: 85
+  on_frame_update:
+    - lambda: |-
+        // Frame received — dashboard is live
+        id(frames_received) += 1;
+  current_url_sensor:
+    name: "Panel Current URL"
+
+# ═══════════════════════════════════════════════════════════════
+# Custom Panel Widgets Component (Local overlay)
+# ═══════════════════════════════════════════════════════════════
+
+panel_widgets:
+  id: panel_widget_overlay
+  display: main_display
+  touchscreen: touch_panel
+  # Widget bar position (left side, slides in)
+  bar_width: 80
+  bar_position: left
+  # Scenes to show as quick buttons
+  scenes:
+    - name: "TV"
+      icon: "tv"
+      service: "scene.turn_on"
+      entity: "scene.tv"
+    - name: "Cine"
+      icon: "movie"
+      service: "scene.turn_on"
+      entity: "scene.movie"
+    - name: "Música"
+      icon: "music"
+      service: "scene.turn_on"
+      entity: "scene.music"
+    - name: "Luces"
+      icon: "lightbulb"
+      service: "light.toggle"
+      entity: "light.living_room"
+    - name: "Off"
+      icon: "power"
+      service: "scene.turn_on"
+      entity: "scene.all_off"
+
+# ═══════════════════════════════════════════════════════════════
+# Globals & State Tracking
+# ═══════════════════════════════════════════════════════════════
+
+globals:
+  - id: last_touch_time
+    type: unsigned long
+    initial_value: '0'
+  - id: is_dimmed
+    type: bool
+    initial_value: 'false'
+  - id: frames_received
+    type: int
+    initial_value: '0'
+  - id: control_a_battery
+    type: int
+    initial_value: '0'
+  - id: control_a_scene
+    type: int
+    initial_value: '0'
+  - id: page_index
+    type: int
+    initial_value: '0'
+
+# ═══════════════════════════════════════════════════════════════
+# Sensors — Home Assistant + Internal
+# ═══════════════════════════════════════════════════════════════
+
+sensor:
+  # WiFi signal strength
+  - platform: wifi_signal
+    name: "Panel WiFi Signal"
+    update_interval: 60s
+
+  # Uptime
+  - platform: uptime
+    name: "Panel Uptime"
+    update_interval: 300s
+
+  # Frames received counter (for diagnostics)
+  - platform: template
+    name: "Panel Frames Received"
+    lambda: 'return id(frames_received);'
+    update_interval: 30s
+
+  # Temperature from HA (for idle widget)
+  - platform: homeassistant
+    entity_id: "sensor.outdoor_temperature"
+    id: outdoor_temp
+    name: "Outdoor Temperature"
+
+  # Control A battery (received via ESP-NOW)
+  - platform: template
+    name: "Control A Battery"
+    id: control_a_batt_sensor
+    lambda: 'return id(control_a_battery);'
+    update_interval: 10s
+    unit_of_measurement: "%"
+    device_class: battery
+
+text_sensor:
+  # Weather condition from HA
+  - platform: homeassistant
+    entity_id: "weather.home"
+    attribute: condition
+    id: weather_condition
+    name: "Weather Condition"
+
+  # Current time
+  - platform: template
+    name: "Panel Time"
+    id: current_time_str
+    lambda: |-
+      auto now = id(sntp_time).now();
+      if (now.is_valid()) {
+        char buf[6];
+        snprintf(buf, sizeof(buf), "%02d:%02d", now.hour, now.minute);
+        return std::string(buf);
+      }
+      return std::string("--:--");
+    update_interval: 30s
+
+# ═══════════════════════════════════════════════════════════════
+# Time Sync (NTP)
+# ═══════════════════════════════════════════════════════════════
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "Europe/Madrid"
+    servers:
+      - "pool.ntp.org"
+
+# ═══════════════════════════════════════════════════════════════
+# Idle Timeout — Dim screen after inactivity
+# ═══════════════════════════════════════════════════════════════
+
+interval:
+  # Check idle every 5 seconds
+  - interval: 5s
+    then:
+      - lambda: |-
+          unsigned long idle_ms = millis() - id(last_touch_time);
+          unsigned long timeout_ms = ${idle_timeout} * 1000UL;
+          
+          if (idle_ms > timeout_ms && !id(is_dimmed)) {
+            // Dim the backlight
+            auto call = id(backlight).turn_on();
+            call.set_brightness(0.15);
+            call.perform();
+            id(is_dimmed) = true;
+            ESP_LOGI("panel", "Display dimmed (idle for %lus)", idle_ms / 1000);
+          }
+
+  # Auto-rotate dashboard pages every 30 seconds (when idle)
+  - interval: 30s
+    then:
+      - lambda: |-
+          if (id(is_dimmed)) {
+            // When dimmed, could show clock/weather instead
+            // (handled by panel_widgets component)
+          }
+
+# ═══════════════════════════════════════════════════════════════
+# Buttons / Inputs (for URL navigation via HA service)
+# ═══════════════════════════════════════════════════════════════
+
+button:
+  - platform: template
+    name: "Panel Next Page"
+    on_press:
+      then:
+        - lambda: |-
+            id(page_index) = (id(page_index) + 1) % 3;
+            const char* urls[] = {
+              "${dashboard_url}",
+              "http://homeassistant.local:8123/dashboard-panel/1",
+              "http://homeassistant.local:8123/dashboard-panel/2"
+            };
+            id(rwv).open_url(std::string(urls[id(page_index)]));
+            ESP_LOGI("panel", "Navigated to page %d", id(page_index));
+
+  - platform: template
+    name: "Panel Previous Page"
+    on_press:
+      then:
+        - lambda: |-
+            id(page_index) = (id(page_index) - 1 + 3) % 3;
+            const char* urls[] = {
+              "${dashboard_url}",
+              "http://homeassistant.local:8123/dashboard-panel/1",
+              "http://homeassistant.local:8123/dashboard-panel/2"
+            };
+            id(rwv).open_url(std::string(urls[id(page_index)]));
+
+  - platform: restart
+    name: "Panel Restart"
+
+# ═══════════════════════════════════════════════════════════════
+# Text Input — URL override from HA
+# ═══════════════════════════════════════════════════════════════
+
+text:
+  - platform: template
+    id: url_input
+    name: "Panel URL"
+    optimistic: true
+    restore_value: false
+    mode: TEXT
+    min_length: 1
+    set_action:
+      - lambda: |-
+          if (!id(rwv).open_url(std::string(x.c_str()))) {
+            ESP_LOGW("panel", "Failed to open URL: %s", x.c_str());
+          } else {
+            ESP_LOGI("panel", "Navigated to: %s", x.c_str());
+          }

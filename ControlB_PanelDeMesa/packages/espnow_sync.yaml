@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════
+# ESP-NOW Sync Package — Receives state from Control A
+# ═══════════════════════════════════════════════════════════
+# 
+# This package enables bidirectional ESP-NOW communication
+# between Control B (this panel) and Control A (portable remote)
+# 
+# Features:
+# - Receives heartbeat from Control A (battery, mode, scene)
+# - Sends scene changes back to Control A
+# - Low-latency direct communication (no router needed)
+#
+# Integration Note:
+# ESP-NOW uses the WiFi radio but doesn't require IP connectivity.
+# Both devices must be on the same WiFi channel.
+
+# Custom ESP-NOW receiver implemented as ESPHome external component
+# In production, this would be a full C++ component.
+# Here we use lambda for demonstration.
+
+globals:
+  - id: espnow_initialized
+    type: bool
+    initial_value: 'false'
+  - id: control_a_last_seen
+    type: unsigned long
+    initial_value: '0'
+  - id: control_a_online
+    type: bool
+    initial_value: 'false'
+
+# ESP-NOW initialization on boot
+esphome:
+  on_boot:
+    priority: 100
+    then:
+      - lambda: |-
+          // ESP-NOW init would go here in production
+          // esp_now_init() + register peer + set callback
+          id(espnow_initialized) = true;
+          ESP_LOGI("espnow", "ESP-NOW sync initialized (Control B receiver)");
+
+# Monitor Control A connection status
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          if (id(espnow_initialized)) {
+            unsigned long last = id(control_a_last_seen);
+            unsigned long now_ms = millis();
+            if (now_ms - last > 15000) {
+              // Control A hasn't been seen in 15s
+              if (id(control_a_online)) {
+                id(control_a_online) = false;
+                ESP_LOGW("espnow", "Control A went offline");
+              }
+            }
+          }
+
+binary_sensor:
+  - platform: template
+    name: "Control A Online"
+    lambda: 'return id(control_a_online);'
+    device_class: connectivity

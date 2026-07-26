@@ -1,0 +1,27 @@
+{
+  "name": "panel-de-mesa-server",
+  "version": "1.0.0",
+  "description": "RemoteWebView Server for Control B Panel de Mesa — Renders HA dashboards and streams JPEG tiles to ESP32-S3 displays",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "env-var": "^7.4.1",
+    "playwright": "^1.42.0",
+    "sharp": "^0.33.2",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "keywords": ["esp32", "home-assistant", "dashboard", "websocket", "jpeg"],
+  "license": "GPL-3.0",
+  "author": "Based on strange-v/RemoteWebViewServer, extended for Control DIY project"
+}
