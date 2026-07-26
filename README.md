@@ -11,6 +11,7 @@ Woki:[https://github.com/OMOTE-Community/OMOTE-Firmware/wiki]
 
 OMOTE-Hardware-main:[https://github.com/OMOTE-Community/OMOTE-Hardware.git]
 wiki:[https://github.com/OMOTE-Community/OMOTE-Hardware/wiki]
+
 ---
 
 homeThing-main:[https://github.com/landonr/homeThing.git]
@@ -24,6 +25,7 @@ OLED Remote: Core Setup:[https://tech.lugowski.dev/guides/smart-oled-remote-esph
 este repo tiene dos 
 RemoteWebViewClient-main:[https://github.com/strange-v/RemoteWebViewClient.git]
 RemoteWebViewServer-main:[https://github.com/strange-v/RemoteWebViewServer.git]
+
 ---
 usar el "Remote WebView Client y Remote WebView Server", como alternativa o como seguno mando, por que es para sobremesa que no se puede mover.
 
