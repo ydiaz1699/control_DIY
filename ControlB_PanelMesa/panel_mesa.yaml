@@ -1,0 +1,435 @@
+# ============================================================================
+# Control B - Panel de Mesa
+# Dashboard HA en tiempo real + controles táctiles locales
+# Hardware: Guition ESP32-S3-4848S040 (480x480 RGB666 + GT911)
+# ============================================================================
+
+esphome:
+  name: panel-mesa
+  friendly_name: "Panel de Mesa"
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    priority: 250
+    then:
+      - logger.log: "Panel de Mesa starting..."
+      - light.turn_on:
+          id: backlight
+          brightness: 100%
+      - delay: 2s
+      - lambda: |-
+          id(boot_complete) = true;
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+    components:
+      - name: "espressif/esp_websocket_client"
+        ref: 1.5.0
+      - name: "bitbank2/jpegdec"
+        source: https://github.com/strange-v/jpegdec-esphome
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+external_components:
+  - source: github://strange-v/RemoteWebViewClient@main
+    refresh: 0s
+    components: [ remote_webview ]
+
+logger:
+  hardware_uart: UART0
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: NONE  # Always powered, no need to save
+  fast_connect: true
+
+captive_portal:
+
+# --- Globals ---
+globals:
+  - id: boot_complete
+    type: bool
+    initial_value: 'false'
+  - id: current_mode
+    type: int
+    initial_value: '0'  # 0=WebView, 1=Local Controls, 2=Screensaver
+  - id: idle_seconds
+    type: int
+    initial_value: '0'
+  - id: screensaver_timeout
+    type: int
+    initial_value: '300'  # 5 min
+  - id: active_scene
+    type: std::string
+    initial_value: '""'
+  - id: theme_dark
+    type: bool
+    initial_value: 'true'
+
+# --- Time ---
+time:
+  - platform: homeassistant
+    id: ha_time
+    on_time:
+      # Auto theme: dark at 18:00
+      - seconds: 0
+        minutes: 0
+        hours: 18
+        then:
+          - lambda: 'id(theme_dark) = true;'
+          - logger.log: "Switching to dark theme"
+      # Auto theme: light at 06:00
+      - seconds: 0
+        minutes: 0
+        hours: 6
+        then:
+          - lambda: 'id(theme_dark) = false;'
+          - logger.log: "Switching to light theme"
+
+# --- MQTT (for sync with Control A and HA) ---
+mqtt:
+  broker: !secret mqtt_broker
+  port: 1883
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+  topic_prefix: "controldiy/panel"
+  birth_message:
+    topic: "controldiy/panel/status"
+    payload: "online"
+  will_message:
+    topic: "controldiy/panel/status"
+    payload: "offline"
+  on_message:
+    # Sync: receive scene changes from Control A
+    - topic: "controldiy/sync/scene"
+      then:
+        - lambda: |-
+            std::string payload = x;
+            ESP_LOGI("sync", "Scene from mando: %s", payload.c_str());
+            // Parse and apply scene
+    # Sync: heartbeat from Control A
+    - topic: "controldiy/sync/heartbeat"
+      then:
+        - lambda: |-
+            ESP_LOGD("sync", "Mando heartbeat received");
+    # Notifications from HA
+    - topic: "controldiy/panel/notification"
+      then:
+        - lambda: |-
+            ESP_LOGI("notify", "Notification: %s", x.c_str());
+            // TODO: Show overlay notification
+
+# --- I2C Bus ---
+i2c:
+  - id: bus_a
+    sda: GPIO19
+    scl: GPIO45
+    scan: true
+
+# --- SPI (for ST7701S init) ---
+spi:
+  clk_pin: GPIO48
+  mosi_pin: GPIO47
+
+# --- Display (ST7701S RGB666) ---
+display:
+  - platform: st7701s
+    id: panel_display
+    show_test_card: False
+    update_interval: never
+    auto_clear_enabled: False
+    spi_mode: MODE3
+    data_rate: 2MHz
+    color_order: RGB
+    invert_colors: False
+    dimensions:
+      width: 480
+      height: 480
+    cs_pin: 39
+    de_pin: 18
+    hsync_pin: 16
+    vsync_pin: 17
+    pclk_pin: 21
+    pclk_frequency: 12MHz
+    pclk_inverted: False
+    hsync_pulse_width: 8
+    hsync_front_porch: 10
+    hsync_back_porch: 20
+    vsync_pulse_width: 8
+    vsync_front_porch: 10
+    vsync_back_porch: 10
+    init_sequence:
+      - 1
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xCD, 0x00]
+    data_pins:
+      red:
+        - GPIO11
+        - GPIO12
+        - GPIO13
+        - GPIO14
+        - GPIO0
+      green:
+        - GPIO8
+        - GPIO20
+        - GPIO3
+        - GPIO46
+        - GPIO9
+        - GPIO10
+      blue:
+        - GPIO4
+        - GPIO5
+        - GPIO6
+        - GPIO7
+        - GPIO15
+
+# --- Touchscreen (GT911) ---
+touchscreen:
+  platform: gt911
+  id: panel_touch
+  transform:
+    mirror_x: false
+    mirror_y: false
+  i2c_id: bus_a
+  on_touch:
+    then:
+      - lambda: |-
+          // Reset idle counter on any touch
+          id(idle_seconds) = 0;
+          // Wake from screensaver
+          if (id(current_mode) == 2) {
+            id(current_mode) = 0;
+            // Restore brightness
+          }
+
+# --- Backlight ---
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Panel Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+
+# --- Remote WebView (main display mode) ---
+remote_webview:
+  id: rwv
+  server: !secret rwv_server
+  url: !secret rwv_dashboard_url
+  full_frame_tile_count: 1
+  max_bytes_per_msg: 61440
+  jpeg_quality: 85
+  on_frame_update:
+    - lambda: |-
+        // Frame received from server
+        id(idle_seconds) = 0;
+  current_url_sensor:
+    name: "Panel Current URL"
+
+# --- URL control (for multi-dashboard navigation) ---
+text:
+  - platform: template
+    id: rwv_url_input
+    name: "Panel URL"
+    optimistic: true
+    restore_value: false
+    mode: TEXT
+    min_length: 1
+    set_action:
+      - lambda: |-
+          if (!id(rwv).open_url(std::string(x.c_str()))) {
+            id(rwv).set_url(std::string(x.c_str()));
+          }
+
+# --- Dashboard URLs (selectable) ---
+select:
+  - platform: template
+    name: "Panel Dashboard"
+    id: dashboard_select
+    options:
+      - "Main"
+      - "Media"
+      - "Climate"
+      - "Cameras"
+      - "Floor Plan"
+    initial_option: "Main"
+    optimistic: true
+    set_action:
+      - lambda: |-
+          std::string base = "${rwv_base_url}";
+          std::string url;
+          if (x == "Main") url = base + "/dashboard-panel/0";
+          else if (x == "Media") url = base + "/dashboard-panel/media";
+          else if (x == "Climate") url = base + "/dashboard-panel/climate";
+          else if (x == "Cameras") url = base + "/dashboard-panel/cameras";
+          else if (x == "Floor Plan") url = base + "/dashboard-panel/floorplan";
+          else url = base + "/dashboard-panel/0";
+          id(rwv).open_url(url);
+
+# --- Sensors ---
+sensor:
+  - platform: wifi_signal
+    name: "Panel WiFi Signal"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "Panel Uptime"
+    update_interval: 60s
+
+# --- Idle Timer / Screensaver ---
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          id(idle_seconds) += 1;
+          // Activate screensaver after timeout
+          if (id(idle_seconds) >= id(screensaver_timeout) && id(current_mode) != 2) {
+            id(current_mode) = 2;
+            ESP_LOGI("panel", "Entering screensaver mode");
+            // Dim backlight
+            auto call = id(backlight).turn_on();
+            call.set_brightness(0.3f);
+            call.set_transition_length(2000);
+            call.perform();
+          }
+
+  # Sync heartbeat every 30s
+  - interval: 30s
+    then:
+      - mqtt.publish:
+          topic: "controldiy/sync/heartbeat"
+          payload: !lambda |-
+            return "{\"from\":\"panel\",\"ts\":" + to_string(millis()) + "}";
+
+# --- Buttons (HA exposed) ---
+button:
+  - platform: template
+    name: "Panel Screenshot"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - logger.log: "Screenshot requested"
+
+  - platform: template
+    name: "Panel Restart"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - button.press:
+            id: panel_restart_hw
+
+  - platform: restart
+    id: panel_restart_hw
+    name: "Panel Restart HW"
+    internal: true
+
+# --- Switches ---
+switch:
+  - platform: template
+    name: "Panel Screensaver"
+    id: screensaver_switch
+    optimistic: true
+    turn_on_action:
+      - lambda: 'id(current_mode) = 2;'
+      - light.turn_on:
+          id: backlight
+          brightness: 30%
+          transition_length: 2s
+    turn_off_action:
+      - lambda: 'id(current_mode) = 0;'
+      - light.turn_on:
+          id: backlight
+          brightness: 100%
+          transition_length: 1s
+
+# --- Scene buttons (local quick actions) ---
+  - platform: template
+    name: "Scene: Ver TV"
+    id: scene_ver_tv
+    optimistic: true
+    turn_on_action:
+      - homeassistant.service:
+          service: scene.turn_on
+          data:
+            entity_id: scene.ver_tv
+      - mqtt.publish:
+          topic: "controldiy/sync/scene"
+          payload: '{"from":"panel","scene":"Ver TV"}'
+      - delay: 1s
+      - switch.turn_off: scene_ver_tv
+
+  - platform: template
+    name: "Scene: Pelicula"
+    id: scene_pelicula
+    optimistic: true
+    turn_on_action:
+      - homeassistant.service:
+          service: scene.turn_on
+          data:
+            entity_id: scene.pelicula
+      - mqtt.publish:
+          topic: "controldiy/sync/scene"
+          payload: '{"from":"panel","scene":"Pelicula"}'
+      - delay: 1s
+      - switch.turn_off: scene_pelicula
+
+  - platform: template
+    name: "Scene: Buenas Noches"
+    id: scene_buenas_noches
+    optimistic: true
+    turn_on_action:
+      - homeassistant.service:
+          service: scene.turn_on
+          data:
+            entity_id: scene.buenas_noches
+      - mqtt.publish:
+          topic: "controldiy/sync/scene"
+          payload: '{"from":"panel","scene":"Buenas Noches"}'
+      - delay: 1s
+      - switch.turn_off: scene_buenas_noches
+
+  - platform: template
+    name: "Scene: Todo Off"
+    id: scene_todo_off
+    optimistic: true
+    turn_on_action:
+      - homeassistant.service:
+          service: scene.turn_on
+          data:
+            entity_id: scene.todo_apagado
+      - mqtt.publish:
+          topic: "controldiy/sync/scene"
+          payload: '{"from":"panel","scene":"Todo Off"}'
+      - delay: 1s
+      - switch.turn_off: scene_todo_off
+
+# --- Substitutions ---
+substitutions:
+  rwv_base_url: "http://172.16.0.252:8123"

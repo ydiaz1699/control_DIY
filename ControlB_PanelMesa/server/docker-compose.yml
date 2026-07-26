@@ -1,0 +1,50 @@
+# ============================================================================
+# Remote WebView Server - Docker Compose
+# Renders HA dashboards and streams as JPEG tiles to Panel de Mesa
+# ============================================================================
+
+version: '3.8'
+
+services:
+  remote-webview-server:
+    image: node:20-slim
+    container_name: rwv-server
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - RWV_PORT=8081
+      - RWV_BROWSER_WIDTH=480
+      - RWV_BROWSER_HEIGHT=480
+      - RWV_DEFAULT_URL=${HA_URL:-http://homeassistant.local:8123/dashboard-panel/0}
+      - RWV_TILE_SIZE=32
+      - RWV_JPEG_QUALITY=85
+      - RWV_FRAME_RATE=15
+      - RWV_MAX_CLIENTS=4
+      - NODE_ENV=production
+    volumes:
+      - ./server-data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "
+        apt-get update && apt-get install -y chromium fonts-noto-color-emoji &&
+        npm install &&
+        npm run build &&
+        npm start
+      "
+    # For development, mount the RemoteWebViewServer-main source:
+    # volumes:
+    #   - ../../RemoteWebViewServer-main:/app
+
+  # Alternative: Use the pre-built image if available
+  # remote-webview-server:
+  #   image: ghcr.io/strange-v/remote-webview-server:latest
+  #   ports:
+  #     - "8081:8081"
+  #   environment:
+  #     - RWV_PORT=8081
+  #     - RWV_BROWSER_WIDTH=480
+  #     - RWV_BROWSER_HEIGHT=480
+
+volumes:
+  server-data:
