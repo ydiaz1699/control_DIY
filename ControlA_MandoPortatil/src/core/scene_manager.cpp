@@ -1,5 +1,6 @@
 #include "scene_manager.h"
 #include "command_router.h"
+#include "config_store.h"
 #include "../config.h"
 #include <Preferences.h>
 
@@ -16,6 +17,16 @@ SceneManager& SceneManager::instance() {
 }
 
 void SceneManager::init() {
+    // 1. Intentar cargar escenas desde NVS
+    bool loadedFromNVS = ConfigStore::instance().loadScenes();
+
+    if (loadedFromNVS) {
+        Serial.println("[SceneManager] Scenes cargadas desde NVS");
+        return;  // NVS ya pobló scenes_ vía addScene()
+    }
+
+    Serial.println("[SceneManager] Primer boot — cargando defaults de fábrica");
+
     // Default scenes
     Scene tvScene;
     tvScene.name = "Ver TV";
@@ -53,8 +64,8 @@ void SceneManager::init() {
     allOffScene.color = 0x424242;
     addScene(allOffScene);
 
-    // Load custom scenes from NVS
-    loadScenesFromPreferences();
+    // Persistir defaults para que la próxima vez ya estén en NVS
+    ConfigStore::instance().saveScenes(scenes_);
 }
 
 void SceneManager::addScene(const Scene& scene) {
@@ -145,18 +156,11 @@ void SceneManager::onNFCDetected(const String& tagId) {
 }
 
 void SceneManager::loadScenesFromPreferences() {
-    // Load from NVS - simplified for now
-    Preferences prefs;
-    if (prefs.begin("scenes", true)) {
-        // Could store scene count and iterate
-        prefs.end();
-    }
+    // Delegado a ConfigStore::loadScenes()
+    ConfigStore::instance().loadScenes();
 }
 
 void SceneManager::saveScenestoPreferences() {
-    Preferences prefs;
-    if (prefs.begin("scenes", false)) {
-        // Save scene data
-        prefs.end();
-    }
+    // Delegado a ConfigStore::saveScenes()
+    ConfigStore::instance().saveScenes(scenes_);
 }

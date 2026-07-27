@@ -20,6 +20,7 @@
 #include "core/command_router.h"
 #include "core/power_manager.h"
 #include "core/scene_manager.h"
+#include "core/config_store.h"
 
 // HAL
 #include "hal/display_driver.h"
@@ -152,6 +153,21 @@ void setup() {
     PowerManager::instance().onBatteryUpdate([](const BatteryState& batt) {
         // Report battery to HA
         MQTTClient::instance().reportState("battery", String((int)batt.percent));
+    });
+
+    // --- ConfigStore: MQTT config editing (sin recompilar) ---
+    MQTTClient::instance().subscribe("controldiy/mando/config/set");
+    MQTTClient::instance().subscribe("controldiy/mando/config/export");
+    MQTTClient::instance().onMessage([](const String& topic, const String& payload) {
+        if (topic == "controldiy/mando/config/set") {
+            bool ok = ConfigStore::instance().importConfigJson(payload);
+            mqtt_publish("controldiy/mando/config/ack",
+                         ok ? "{\"status\":\"ok\",\"msg\":\"Restart to apply\"}"
+                            : "{\"status\":\"error\",\"msg\":\"Invalid JSON\"}");
+        } else if (topic == "controldiy/mando/config/export") {
+            String exported = ConfigStore::instance().exportConfigJson();
+            mqtt_publish("controldiy/mando/config/dump", exported.c_str());
+        }
     });
 
     // --- Sync Protocol Callbacks ---

@@ -1,4 +1,5 @@
 #include "command_router.h"
+#include "config_store.h"
 #include "../config.h"
 
 // Forward declarations for hardware drivers
@@ -17,7 +18,17 @@ CommandRouter& CommandRouter::instance() {
 }
 
 void CommandRouter::init() {
-    // Load default device profiles
+    // 1. Intentar cargar configuración guardada en NVS
+    bool loadedFromNVS = ConfigStore::instance().loadDevices();
+
+    // 2. Si no había nada (primer boot), cargar defaults de fábrica
+    if (loadedFromNVS) {
+        Serial.println("[CommandRouter] Config cargada desde NVS");
+        return;  // NVS ya pobló devices_ vía addDeviceProfile()
+    }
+
+    Serial.println("[CommandRouter] Primer boot — cargando defaults de fábrica");
+
     // Samsung TV
     DeviceProfile samsungTV;
     samsungTV.name = "Samsung TV";
@@ -59,6 +70,9 @@ void CommandRouter::init() {
     if (!devices_.empty()) {
         activeDeviceName_ = devices_.begin()->first;
     }
+
+    // Persistir defaults para que la próxima vez ya estén en NVS
+    ConfigStore::instance().saveDevices(devices_);
 }
 
 void CommandRouter::execute(const String& commandName) {
